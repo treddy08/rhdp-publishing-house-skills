@@ -192,7 +192,8 @@ Before handing back to the orchestrator, run ALL of the following checks.
    - Problem Statement, Target Audience, Prerequisites, Learning Objectives,
      Content Type, Products & Technologies, Module Map, Difficulty Level,
      Environment, Infrastructure Requirements, Assessment Strategy
-2. **No unfilled placeholders** — no `[Project Title]`, `[XX min]`, `PLACEHOLDER`, `TODO`, etc.
+   - Also check that the document has a descriptive H1 title (not still `# [Project Title]`)
+2. **No unfilled placeholders** — no `[Project Title]`, `[XX min]`, `[Module title]`, `PLACEHOLDER`, `TODO`, or any bracket-enclosed template token
 3. **Module Map populated** — at least one module row with title and duration
 4. **Duration present** in Module Map or as a total
 5. **Learning objectives are actionable** — all start with action verbs (Configure, Deploy, Create, Implement, Troubleshoot, Monitor, Scale)
@@ -201,14 +202,14 @@ Before handing back to the orchestrator, run ALL of the following checks.
 **B. Module outline checks:**
 
 6. **Outline exists for every module** listed in the Module Map table
-7. **Each outline has Brief Overview, Lab Structure, and time estimates**
+7. **Each outline has these required sections:** Brief Overview, Audience and Time, See/Learn/Do (or "What You Will See, Learn, and Do"), Lab Structure (with at least one table row), Key Takeaways
 8. **No orphan outlines** — every module-0N-*.md has a corresponding Module Map entry
 
 **C. Infrastructure field checks (Part 3 gates):**
 
-9. **Cluster sizing fields set** — if `spec.environment.worker_count` is set, then `worker_cpu`, `worker_ram_gb`, `worker_disk_gb` must also be set. If none are set, ask Q12 again.
+9. **Cluster sizing fields set** — if `spec.environment.worker_count` is set, then `worker_cpu`, `worker_ram_gb`, `worker_disk_gb` must also be set. Only re-ask Q12 if `worker_count` is non-null but siblings are null; if all are null, it is acceptable at intake.
 10. **Concurrent users** — if `spec.environment.topology` = `per-student` or `cnv-pool`, then `spec.environment.max_concurrent_users` must be non-null. If missing, ask Q14.
-11. **AI/MaaS requirement** — if any product mentions AI/LLM keywords (AI, RHOAI, OpenShift AI, MaaS, Granite, InstructLab, LLM, inference, model serving), then `spec.environment.ai_requirement` must be set. If missing, ask Q15.
+11. **AI/MaaS requirement** — if any product mentions AI/LLM keywords (AI, RHOAI, OpenShift AI, MaaS, Granite, InstructLab, Ollama, LLM, inference, model serving), then `spec.environment.ai_requirement` must be set. If missing, ask Q15.
     - If `ai_requirement = gpu` or `ai_model_tier = frontier`, then `ai_justification` must be non-empty. If missing, ask for justification.
 12. **AAP version** — if products include "Ansible Automation Platform" or "AAP", then `spec.environment.aap_version` must be set. If missing, ask Q16.
 13. **External services** — if `spec.environment.external_services` is a non-empty list, verify entries are named services (not "internet", "any public IP"). Reject vague entries.

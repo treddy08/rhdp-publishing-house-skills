@@ -4,9 +4,9 @@ Guidelines for evaluating and generating project specs. Used by the intake agent
 
 ## Required Sections in design.md
 
-A complete spec MUST have all of these:
+A complete spec MUST have all of these (11 sections + a descriptive H1 title):
 
-1. **Project Name** — clear, descriptive
+1. **H1 title** — descriptive project name (not a placeholder like `# [Project Title]`)
 2. **Problem Statement** — what gap this fills, why it's needed (2-3 sentences)
 3. **Target Audience** — role, experience level, what they already know
 4. **Prerequisites** — what the learner needs before starting; can the lab validate them?
@@ -14,9 +14,10 @@ A complete spec MUST have all of these:
 6. **Content Type** — lab or demo
 7. **Products & Technologies** — official Red Hat product names
 8. **Module Map** — table with module number, title, estimated duration
-9. **Environment** — what the learner sees when the lab starts, plus automation needs
-10. **Infrastructure Requirements** — platform, sizing, AI/MaaS, external services, non-GA products
-11. **Assessment Strategy** — how success is measured per module
+9. **Difficulty Level** — beginner, intermediate, or advanced
+10. **Environment** — what the learner sees when the lab starts, plus automation needs
+11. **Infrastructure Requirements** — platform, sizing, AI/MaaS, external services, non-GA products
+12. **Assessment Strategy** — how success is measured per module
 
 ## Infrastructure Requirements
 
@@ -41,6 +42,7 @@ Capture what you know now — guesstimates are fine during intake. Spec refineme
 - `ai_model_tier`: open-source (default, auto-approved) | frontier (requires justification)
 - `ai_model_name`: specific model if known
 - `ai_justification`: required if frontier or gpu — explain why open-source is insufficient
+- **AI keyword triggers Q15:** AI, RHOAI, OpenShift AI, MaaS, Granite, InstructLab, Ollama, LLM, inference, model serving
 - **Default path:** MaaS + open-source → auto-approved. Frontier or GPU → routes to human infra review.
 
 ### External Services
@@ -73,6 +75,16 @@ Auto-computed by Central (not authored):
 - `rcars_top_matches` — top 3 RCARS matches
 - `peak_environments` — max_concurrent_users × topology factor
 - `cost_per_run_est` — indicative cost from sizing
+
+## Module Outline Required Sections
+
+Each module outline in `publishing-house/spec/modules/module-NN-*.md` must have:
+
+1. **Brief Overview** — non-empty
+2. **Audience and Time** — must include a duration estimate
+3. **What You Will See, Learn, and Do** (or "See/Learn/Do") — at least one item
+4. **Lab Structure** — table with at least one row
+5. **Key Takeaways** — non-empty
 
 ## Optional Sections
 

@@ -71,7 +71,7 @@ After each answer, immediately write to spec.yaml.
 
 > **What difficulty level best describes this content?** Beginner, intermediate, or advanced?
 
-- **spec.yaml field:** `spec.audience` (update if different from Q2)
+- **spec.yaml field:** `spec.audience` (update if different from Q2; use a separate `spec.difficulty_level` field if the audience level and difficulty differ)
 
 ## Q11: OpenShift Version
 
@@ -171,16 +171,22 @@ After each answer, immediately write to spec.yaml.
 
 ## Approval Checklist Questions
 
+*Note: Q19-Q21 were intentionally removed during the Part 5 spec revision (2026-07-14).
+They covered manager-facing fields (demand signal, maintenance owner, shelf life) that the
+content manager reads directly from the spec rather than collecting as authored fields.
+Q22-Q24 numbers are preserved to maintain alignment with the gate validation spec (RHDPCD-170 Parts 3-5).*
+
 *Ask Q22–Q24 before finalizing the spec. These go into approval_checklist in spec.yaml.*
 
 ## Q22: Prerequisites Verifiable In-Lab
 
 > **What must the learner know or have done before starting Module 1?**
-> And: can the lab automatically validate those prerequisites when the learner starts?
-> For example: a check script that verifies a cluster is already connected.
+>
+> And separately: can the lab automatically validate those prerequisites when the learner starts?
+> For example: a check script that verifies a cluster is already connected, or a pre-flight that confirms credentials exist.
 
-- **design.md section:** `## Prerequisites`
-- **spec.yaml field:** `approval_checklist.content_lead.prerequisites_verifiable` (true | false)
+- **design.md section:** `## Prerequisites` (captures the list of prerequisites)
+- **spec.yaml field:** `approval_checklist.content_lead.prerequisites_verifiable` (true | false — answers whether validation is possible)
 
 ## Q23: Assessment Strategy
 
