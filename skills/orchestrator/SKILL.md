@@ -248,6 +248,65 @@ Use the returned stage in Step D below.
 > [For rhdp_published: "Jira ticket: **{epic_key}** — {jira_url}". For self_published: "No Jira — self-published mode."]
 > Stage is now **{confirmed_stage_from_rhdh}**. [Explain what happens next in one sentence based on the actual stage returned.]
 
+**Step E — Update worklog with intake summary:**
+
+Write a session summary to `publishing-house/worklog.yaml` capturing what was decided
+during intake. Run this immediately after Step D. Do NOT ask the author.
+
+```bash
+python3 -c "
+import yaml, json
+from pathlib import Path
+from datetime import datetime, timezone
+
+spec = yaml.safe_load(Path('publishing-house/spec.yaml').read_text()) or {}
+project = spec.get('project', {})
+s = spec.get('spec', {})
+modules = s.get('modules', [])
+duration = s.get('duration_hours', 0)
+title = s.get('title', project.get('slug', 'Unknown'))
+jira = project.get('jira_ticket', '')
+mode = project.get('deployment_mode', 'unknown')
+rcars = spec.get('approval_checklist', {}).get('content_lead', {})
+overlap = rcars.get('rcars_overlap_pct')
+
+content = (
+    f'Intake complete for \"{title}\". '
+    f'{len(modules)} modules, ~{duration}h total. '
+    + (f'Jira: {jira}. ' if jira else 'Self-published — no Jira. ')
+    + (f'RCARS overlap: {overlap}%. ' if overlap is not None else '')
+    + f'Stage: content_review. '
+    + 'Next: content reviewer reviews design spec and module outlines.'
+)
+
+wl_path = Path('publishing-house/worklog.yaml')
+wl = yaml.safe_load(wl_path.read_text()) if wl_path.exists() else {'entries': []}
+if not isinstance(wl, dict):
+    wl = {'entries': []}
+entries = wl.get('entries', [])
+today = datetime.now(timezone.utc).strftime('%Y-%m-%d')
+idx = sum(1 for e in entries if e.get('id','').startswith(today)) + 1
+entries.append({
+    'id': f'{today}-{idx:03d}',
+    'timestamp': datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'),
+    'author': project.get('owner_email', 'author'),
+    'status': 'resolved',
+    'type': 'summary',
+    'content': content,
+})
+wl['entries'] = entries
+wl_path.write_text(yaml.dump(wl, default_flow_style=False, allow_unicode=True))
+print('worklog updated')
+"
+```
+
+Then commit the worklog:
+```bash
+git add publishing-house/worklog.yaml
+git commit -m "docs: intake session summary"
+git push
+```
+
 ## Stage responses (non-intake)
 
 **content_review**
@@ -276,7 +335,7 @@ Use the returned stage in Step D below.
 - **`project_id`** comes from `catalog-info.yaml` `metadata.name` — this is the canonical identifier
 - **`central_url`** comes from `spec.yaml` `system.central` — used for ALL API calls
 - Stage is ALWAYS confirmed from RHDH via orchestrator-state API — never hardcoded
-- After intake approval: run git commit, ph-intake.py, and stage refresh IMMEDIATELY. No confirmation. No asking.
+- After intake approval: run git commit, ph-intake.py, stage refresh, and worklog update IMMEDIATELY. No confirmation. No asking.
 - No `.ph-state` file — all state comes from catalog-info.yaml, spec.yaml, and the Central API
 
 ## Post-Intake: Project Structure Cleanup
