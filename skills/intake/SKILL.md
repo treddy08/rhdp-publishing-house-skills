@@ -193,7 +193,7 @@ Also update any project fields gathered during intake:
 - `project.owner_email` (if not already set)
 - `project.content_type` (if not already set)
 - `project.showroom_type` (if not already set)
-- `project.reviewer_email` (if gathered during intake — rhdp_published only)
+
 
 #### Step 4: Self-Validate the Spec
 

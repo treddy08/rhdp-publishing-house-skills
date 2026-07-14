@@ -6,66 +6,59 @@ After each answer, immediately write to spec.yaml.
 
 ---
 
-## Q1: Reviewer (rhdp_published only)
-
-> **Who will review this content?** Provide their email address.
-
-- **Skip if:** `project.deployment_mode` is `self_published` OR `project.reviewer_email` is already set
-- **spec.yaml field:** `project.reviewer_email`
-
-## Q2: Main Goal
+## Q1: Main Goal
 
 > **What will someone be able to DO after completing this?** Be specific — a concrete, measurable outcome.
 
 - **spec.yaml field:** `spec.title` (derive a short title from the goal)
 - **Also captures:** the problem statement for design.md
 
-## Q3: Target Audience
+## Q2: Target Audience
 
 > **Who is this for?** What's their role, experience level, and what background knowledge should they have?
 
 - **spec.yaml field:** `spec.audience` (one of: `beginner`, `intermediate`, `advanced`)
 
-## Q4: Products and Technologies
+## Q3: Products and Technologies
 
 > **Which Red Hat products and technologies are involved?** Include full product names and versions if known.
 
 - **Used in:** design.md Products & Technologies section
 
-## Q5: Content Type (if not set)
+## Q4: Content Type (if not set)
 
 > **Is this a hands-on lab, a guided demo, or a workshop?**
 
 - **Skip if:** `project.content_type` is already set
 - **spec.yaml field:** `project.content_type` (one of: `lab`, `demo`, `workshop`)
 
-## Q6: Showroom Type (if not set)
+## Q5: Showroom Type (if not set)
 
 > **Will this be a standard Showroom lab (Classic) or an embedded Zero-Touch experience?**
 
 - **Skip if:** `project.showroom_type` is already set
 - **spec.yaml field:** `project.showroom_type` (one of: `classic`, `zero_touch`)
 
-## Q7: Environment
+## Q6: Environment
 
 > **What does the learner start with, and what needs to be pre-configured by automation?** For example: a shared OpenShift cluster with operators pre-installed, or a per-student cluster with nothing installed.
 
 - **spec.yaml field:** `spec.environment.topology` (one of: `shared-cluster`, `per-student`, `cnv-pool`)
 - **Also captures:** environment details for design.md
 
-## Q8: Total Duration
+## Q7: Total Duration
 
 > **How long should this take end to end?** Consider the complexity of what you described.
 
 - **spec.yaml field:** `spec.duration_hours`
 
-## Q9: Module Structure
+## Q8: Module Structure
 
 > **Let me propose a module breakdown based on what you've described.** [Present proposed modules with titles and estimated durations, 15-45 min each.] **Does this structure work, or would you adjust it?**
 
 - **spec.yaml field:** `spec.modules` (list of `{title, duration_min}`)
 
-## Q10: Module Relationship
+## Q9: Module Relationship
 
 > **How do these modules relate to each other?**
 > 1. **Sequential** — they build on each other and must be done in order
@@ -74,19 +67,19 @@ After each answer, immediately write to spec.yaml.
 
 - **Used in:** design.md Module Map section
 
-## Q11: Difficulty Level
+## Q10: Difficulty Level
 
 > **What difficulty level best describes this content?** Beginner, intermediate, or advanced?
 
 - **spec.yaml field:** `spec.audience` (update if different from Q3)
 
-## Q12: OpenShift Version
+## Q11: OpenShift Version
 
 > **Which OpenShift version should this target?** For example: 4.17, 4.18, 4.19.
 
 - **spec.yaml field:** `spec.environment.ocp_version`
 
-## Q13: Infrastructure Requirements
+## Q12: Infrastructure Requirements
 
 > **Let me confirm the infrastructure needs.** Based on what you described:
 > - **Base infrastructure:** [propose: ocp4-cluster, ocp-workloads, or cloud-vms-base]
@@ -98,7 +91,7 @@ After each answer, immediately write to spec.yaml.
 
 - **Used in:** design.md Infrastructure Requirements section
 
-## Q14: Reference Material
+## Q13: Reference Material
 
 > **Do you have any reference material I should work from?** Internal docs, existing labs, recorded demos, architecture diagrams, or blog posts?
 
