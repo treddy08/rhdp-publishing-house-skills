@@ -47,7 +47,7 @@ else:
 Run silently:
 ```bash
 python3 -c "
-import yaml
+import yaml, json
 from pathlib import Path
 ci = yaml.safe_load(Path('catalog-info.yaml').read_text())
 spec = yaml.safe_load(Path('publishing-house/spec.yaml').read_text()) or {}
@@ -55,10 +55,17 @@ pid = ci.get('metadata', {}).get('name', '')
 central = spec.get('system', {}).get('central', '')
 print(f'project_id:{pid}')
 print(f'central:{central}')
+# Also show cached stage from .ph-state if present
+ph = Path('.ph-state')
+if ph.exists():
+    try:
+        d = json.loads(ph.read_text())
+        print(f'cached_stage:{d.get(\"stage\",\"\")}')
+    except: pass
 "
 ```
 
-Extract `project_id` and `central_url` from the output. These are used for all subsequent API calls.
+Extract `project_id`, `central_url`, and optionally `cached_stage` from the output. These are used for all subsequent API calls.
 
 If `project_id` is empty → show error: "`metadata.name` is missing in `catalog-info.yaml`." **STOP.**
 If `central_url` is empty → show error: "`system.central` is not set in `spec.yaml`. Re-scaffold from the RHDH template." **STOP.**
@@ -117,7 +124,7 @@ print('saved')
 
   Proceed to Step 4 immediately.
 
-**Step 4 — Check workflow state:**
+**Step 4 — Check workflow state from Central (always refresh from source of truth):**
 
 Run silently:
 ```bash
@@ -140,6 +147,43 @@ except Exception as e:
 Replace CENTRAL_URL with `central_url` and PROJECT_ID with `project_id`.
 
 The output is the current stage: `intake`, `content_review`, `infra_review`, `development`, `ready`, or `published`.
+
+**Step 4.5 — Write and commit `.ph-state` (visible on GitHub):**
+
+After getting the stage from Central, write `.ph-state` to the repo root and commit it.
+This file is **committed** — anyone can open the GitHub repo and see the current project state.
+
+Run silently:
+```bash
+python3 -c "
+import json, yaml
+from pathlib import Path
+from datetime import datetime, timezone
+
+spec = yaml.safe_load(Path('publishing-house/spec.yaml').read_text()) or {}
+jira = spec.get('project', {}).get('jira_ticket', '')
+
+state = {
+    'project_id': 'PROJECT_ID',
+    'stage': 'STAGE_FROM_STEP4',
+    'updated_at': datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'),
+}
+if jira:
+    state['jira_ticket'] = jira
+
+Path('.ph-state').write_text(json.dumps(state, indent=2))
+print('ph-state written')
+"
+```
+Replace PROJECT_ID with `project_id` and STAGE_FROM_STEP4 with the stage returned in Step 4.
+
+```bash
+git add .ph-state
+git commit -m "chore: sync project state [skip ci]" 2>/dev/null || true
+git push 2>/dev/null || true
+```
+
+(Skip silently if nothing changed.)
 
 **Step 5 — Read spec.yaml for pre-populated fields:**
 
@@ -215,16 +259,18 @@ git push
 
 **Run this immediately. Do NOT ask the author.**
 
-**Step C.5 — Query actual stage from RHDH after Jira creation:**
+**Step C.5 — Query actual stage from RHDH after Jira creation + update .ph-state:**
 
 After the Jira ticket is created and SonataFlow has been signaled, query the actual stage
-that RHDH/SonataFlow transitioned to. Do NOT trust the hardcoded stage — always confirm
-from the source of truth.
+that RHDH/SonataFlow transitioned to, then update `.ph-state` with the new stage.
 
 Run silently:
 ```bash
 python3 -c "
-import json, os, ssl, urllib.request
+import json, os, yaml, ssl, urllib.request
+from pathlib import Path
+from datetime import datetime, timezone
+
 creds = json.load(open(os.path.expanduser('~/.config/publishing-house/auth.json')))
 key = creds.get('credential', '')
 ctx = ssl.create_default_context(); ctx.check_hostname = False; ctx.verify_mode = ssl.CERT_NONE
@@ -234,12 +280,28 @@ req = urllib.request.Request(
 )
 try:
     result = json.loads(urllib.request.urlopen(req, context=ctx, timeout=10).read().decode())
-    print(result.get('stage', 'content_review'))
-except Exception as e:
-    print('content_review')
+    stage = result.get('stage', 'content_review')
+except Exception:
+    stage = 'content_review'
+
+# Update .ph-state with confirmed stage + jira ticket
+spec = yaml.safe_load(Path('publishing-house/spec.yaml').read_text()) or {}
+jira = spec.get('project', {}).get('jira_ticket', '')
+state = {'project_id': 'PROJECT_ID', 'stage': stage, 'updated_at': datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')}
+if jira:
+    state['jira_ticket'] = jira
+Path('.ph-state').write_text(json.dumps(state, indent=2))
+print(stage)
 "
 ```
 Replace CENTRAL_URL with `central_url` and PROJECT_ID with `project_id`.
+
+Then commit the updated `.ph-state`:
+```bash
+git add .ph-state
+git commit -m "chore: sync project state to content_review [skip ci]"
+git push
+```
 
 Use the returned stage in Step D below.
 
@@ -266,7 +328,6 @@ modules = s.get('modules', [])
 duration = s.get('duration_hours', 0)
 title = s.get('title', project.get('slug', 'Unknown'))
 jira = project.get('jira_ticket', '')
-mode = project.get('deployment_mode', 'unknown')
 rcars = spec.get('approval_checklist', {}).get('content_lead', {})
 overlap = rcars.get('rcars_overlap_pct')
 
@@ -275,7 +336,7 @@ content = (
     f'{len(modules)} modules, ~{duration}h total. '
     + (f'Jira: {jira}. ' if jira else 'Self-published — no Jira. ')
     + (f'RCARS overlap: {overlap}%. ' if overlap is not None else '')
-    + f'Stage: content_review. '
+    + 'Stage: content_review. '
     + 'Next: content reviewer reviews design spec and module outlines.'
 )
 
@@ -335,8 +396,8 @@ git push
 - **`project_id`** comes from `catalog-info.yaml` `metadata.name` — this is the canonical identifier
 - **`central_url`** comes from `spec.yaml` `system.central` — used for ALL API calls
 - Stage is ALWAYS confirmed from RHDH via orchestrator-state API — never hardcoded
-- After intake approval: run git commit, ph-intake.py, stage refresh, and worklog update IMMEDIATELY. No confirmation. No asking.
-- No `.ph-state` file — all state comes from catalog-info.yaml, spec.yaml, and the Central API
+- **`.ph-state`** is a **committed file** at the repo root — updated and pushed after every stage change so anyone can see the project state on GitHub without running any tools
+- After intake approval: run git commit, ph-intake.py, `.ph-state` update, and worklog update IMMEDIATELY. No confirmation. No asking.
 
 ## Post-Intake: Project Structure Cleanup
 
