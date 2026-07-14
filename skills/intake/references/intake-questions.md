@@ -198,12 +198,39 @@ Q22-Q24 numbers are preserved to maintain alignment with the gate validation spe
 
 ## Q24: Differentiation from Existing Content
 
+**Before asking this question, the intake skill MUST:**
+
+1. Read `system.central` from `publishing-house/spec.yaml` to get the Central API URL
+2. Build the products list from Q3 answers and audience from Q2
+3. Call: `GET {central_url}/api/v1/rcars/overlap?products={products}&audience={audience}&limit=5`
+4. Present the results inline before asking the differentiation question
+
+**If RCARS returns matches**, present them to the author:
+
+> I checked the RHDP catalog for similar content. Here's what already exists:
+>
+> **Top matches:**
+> 1. **[display_name]** — [url]
+> 2. **[display_name]** — [url]
+> 3. **[display_name]** — [url]
+>
+> **How does your lab specifically differ from these?** What does it cover that these labs don't? What's the unique value for a learner who has already seen one of these?
+
+**If RCARS returns no matches** (empty or overlap_pct < 5%), present:
+
+> I checked the RHDP catalog — no close matches found for your products and audience combination. This looks like genuinely new territory.
+>
+> **Still, how would you describe what makes this lab unique?** (This helps reviewers understand the positioning.)
+
+**If Central is unreachable** (network error, timeout), fall back gracefully:
+
 > **In your own words: how does this differ from existing content on similar topics?**
 > Reference specific existing labs you're aware of, and explain what this adds.
 
 - **spec.yaml field:** `approval_checklist.content_lead.differentiation`
-- Note: RCARS overlap is also auto-computed by Central and placed in `rcars_overlap_pct` + `rcars_top_matches`.
-- **Validation:** Required. Must be non-empty.
+- **spec.yaml field:** `approval_checklist.content_lead.rcars_overlap_pct` — write from RCARS response (or null if unreachable)
+- **spec.yaml field:** `approval_checklist.content_lead.rcars_top_matches` — write from RCARS response (or [] if unreachable)
+- **Validation:** `differentiation` must be non-empty before intake completes.
 
 ---
 
@@ -215,3 +242,4 @@ Q22-Q24 numbers are preserved to maintain alignment with the gate validation spe
 - After each answer, immediately update `publishing-house/spec.yaml` with the captured value.
 - If an answer is vague, ask a single follow-up to clarify before moving on.
 - Q14–Q18 are infrastructure gates: if any required field is blank, intake is NOT complete. Do not signal completion to the orchestrator until all required fields are set.
+- **Q24 RCARS lookup is mandatory** — always attempt the lookup before asking the differentiation question. Only fall back to the blind question if Central is unreachable.
