@@ -167,8 +167,9 @@ The intake sub-skill will:
 2. Conduct the requirements interview (one question at a time)
 3. Write `publishing-house/spec/design.md` from the interview answers
 4. Write `publishing-house/spec/modules/module-0N-*.md` outlines (one per module)
-5. Update spec.yaml with structured data from the interview
-6. Present the completed design to the author for review
+5. Generate draft `publishing-house/spec/automation-manifest.yaml` from spec data
+6. Update spec.yaml with structured data from the interview
+7. Present the completed design to the author for review
 
 **When the intake sub-skill signals it has finished writing the spec, the orchestrator MUST:**
 
@@ -188,7 +189,7 @@ Ask the author explicitly — do NOT proceed without this confirmation:
 **Step A — Commit and push:**
 ```bash
 git add publishing-house/
-git commit -m "feat: intake complete — design spec and module outlines"
+git commit -m "feat: intake complete — design spec, module outlines, and automation manifest draft"
 git push
 ```
 
@@ -201,23 +202,51 @@ python publishing-house/tools/ph-intake.py 2>&1
 
 `ph-intake.py` reads `project_id` from `catalog-info.yaml`, reads spec data from `spec.yaml`,
 calls `POST {central_url}/api/v1/projects/{project_id}/intake`, and updates `spec.yaml`
-with the returned Jira ticket.
+with the returned Jira ticket and RCARS overlap data.
 
 Parse the JSON output from ph-intake.py.
 
-**Step C — Commit and push the updated spec.yaml (with Jira ticket):**
+**Step C — Commit and push the updated spec.yaml (with Jira ticket and RCARS data):**
 ```bash
 git add publishing-house/spec.yaml
-git commit -m "feat: add Jira ticket from intake submission"
+git commit -m "feat: add Jira ticket and RCARS overlap from intake submission"
 git push
 ```
 
 **Run this immediately. Do NOT ask the author.**
 
+**Step C.5 — Query actual stage from RHDH after Jira creation:**
+
+After the Jira ticket is created and SonataFlow has been signaled, query the actual stage
+that RHDH/SonataFlow transitioned to. Do NOT trust the hardcoded stage — always confirm
+from the source of truth.
+
+Run silently:
+```bash
+python3 -c "
+import json, os, ssl, urllib.request
+creds = json.load(open(os.path.expanduser('~/.config/publishing-house/auth.json')))
+key = creds.get('credential', '')
+ctx = ssl.create_default_context(); ctx.check_hostname = False; ctx.verify_mode = ssl.CERT_NONE
+req = urllib.request.Request(
+    'CENTRAL_URL/api/v1/projects/PROJECT_ID/orchestrator-state',
+    headers={'Authorization': f'Bearer {key}'}
+)
+try:
+    result = json.loads(urllib.request.urlopen(req, context=ctx, timeout=10).read().decode())
+    print(result.get('stage', 'content_review'))
+except Exception as e:
+    print('content_review')
+"
+```
+Replace CENTRAL_URL with `central_url` and PROJECT_ID with `project_id`.
+
+Use the returned stage in Step D below.
+
 **Step D — Tell the author what happened:**
 > ✅ Spec submitted.
 > [For rhdp_published: "Jira ticket: **{epic_key}** — {jira_url}". For self_published: "No Jira — self-published mode."]
-> Stage is now **{stage}**. [Explain what happens next in one sentence.]
+> Stage is now **{confirmed_stage_from_rhdh}**. [Explain what happens next in one sentence based on the actual stage returned.]
 
 ## Stage responses (non-intake)
 
@@ -246,8 +275,8 @@ git push
 - ALWAYS show the portal URL in the conversation — never rely solely on `open` working (DevSpaces has no browser)
 - **`project_id`** comes from `catalog-info.yaml` `metadata.name` — this is the canonical identifier
 - **`central_url`** comes from `spec.yaml` `system.central` — used for ALL API calls
-- Stage is read from the Central API, never from local files
-- After intake approval: run git commit, ph-intake.py, and update IMMEDIATELY. No confirmation. No asking.
+- Stage is ALWAYS confirmed from RHDH via orchestrator-state API — never hardcoded
+- After intake approval: run git commit, ph-intake.py, and stage refresh IMMEDIATELY. No confirmation. No asking.
 - No `.ph-state` file — all state comes from catalog-info.yaml, spec.yaml, and the Central API
 
 ## Post-Intake: Project Structure Cleanup
