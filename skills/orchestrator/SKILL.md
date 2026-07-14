@@ -47,7 +47,7 @@ else:
 Run silently:
 ```bash
 python3 -c "
-import yaml, json
+import yaml
 from pathlib import Path
 ci = yaml.safe_load(Path('catalog-info.yaml').read_text())
 spec = yaml.safe_load(Path('publishing-house/spec.yaml').read_text()) or {}
@@ -55,17 +55,10 @@ pid = ci.get('metadata', {}).get('name', '')
 central = spec.get('system', {}).get('central', '')
 print(f'project_id:{pid}')
 print(f'central:{central}')
-# Also show cached stage from .ph-state if present
-ph = Path('.ph-state')
-if ph.exists():
-    try:
-        d = json.loads(ph.read_text())
-        print(f'cached_stage:{d.get(\"stage\",\"\")}')
-    except: pass
 "
 ```
 
-Extract `project_id`, `central_url`, and optionally `cached_stage` from the output. These are used for all subsequent API calls.
+Extract `project_id` and `central_url` from the output. These are used for all subsequent API calls.
 
 If `project_id` is empty → show error: "`metadata.name` is missing in `catalog-info.yaml`." **STOP.**
 If `central_url` is empty → show error: "`system.central` is not set in `spec.yaml`. Re-scaffold from the RHDH template." **STOP.**
@@ -124,9 +117,14 @@ print('saved')
 
   Proceed to Step 4 immediately.
 
-**Step 4 — Check workflow state from Central (always refresh from source of truth):**
+**Step 4 — Read spec.yaml and check workflow state:**
 
-Run silently:
+Read `publishing-house/spec.yaml` using the Read tool. Note:
+- `project.deployment_mode` — `rhdp_published` or `self_published`
+- `project.jira_ticket` — may be blank
+- All other pre-populated fields — the intake sub-skill will skip asking about those
+
+Then query the workflow stage silently:
 ```bash
 python3 -c "
 import json, os, ssl, urllib.request
@@ -134,66 +132,54 @@ creds = json.load(open(os.path.expanduser('~/.config/publishing-house/auth.json'
 key = creds.get('credential', '')
 ctx = ssl.create_default_context(); ctx.check_hostname = False; ctx.verify_mode = ssl.CERT_NONE
 req = urllib.request.Request(
-    'CENTRAL_URL/api/v1/projects/PROJECT_ID/orchestrator-state',
+    'CENTRAL_URL/api/v1/projects/PROJECT_ID/workflow-data',
     headers={'Authorization': f'Bearer {key}'}
 )
 try:
     result = json.loads(urllib.request.urlopen(req, context=ctx, timeout=10).read().decode())
-    print(result.get('stage', 'intake'))
+    stage = result.get('stage', 'intake')
+    epic_key = result.get('epic_key', '')
+    jira_url = result.get('jira_url', '')
+    print(f'stage:{stage}')
+    print(f'epic_key:{epic_key}')
+    print(f'jira_url:{jira_url}')
 except Exception as e:
-    print('intake')
+    print('stage:intake')
+    print('epic_key:')
+    print('jira_url:')
 "
 ```
 Replace CENTRAL_URL with `central_url` and PROJECT_ID with `project_id`.
 
-The output is the current stage: `intake`, `content_review`, `infra_review`, `development`, `ready`, or `published`.
+Extract `stage`, `epic_key`, and `jira_url` from the output. The stage will be one of: `intake`, `review`, `development`, `ready`, or `published`.
 
-**Step 4.5 — Write and commit `.ph-state` (visible on GitHub):**
+**Sync Jira ticket (rhdp_published only):**
 
-After getting the stage from Central, write `.ph-state` to the repo root and commit it.
-This file is **committed** — anyone can open the GitHub repo and see the current project state.
-
-Run silently:
+If `project.deployment_mode` is `rhdp_published` AND `project.jira_ticket` in spec.yaml is blank AND `epic_key` from the workflow-data response is non-empty — update spec.yaml:
 ```bash
 python3 -c "
-import json, yaml
+import yaml
 from pathlib import Path
-from datetime import datetime, timezone
-
-spec = yaml.safe_load(Path('publishing-house/spec.yaml').read_text()) or {}
-jira = spec.get('project', {}).get('jira_ticket', '')
-
-state = {
-    'project_id': 'PROJECT_ID',
-    'stage': 'STAGE_FROM_STEP4',
-    'updated_at': datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'),
-}
-if jira:
-    state['jira_ticket'] = jira
-
-Path('.ph-state').write_text(json.dumps(state, indent=2))
-print('ph-state written')
+spec_path = Path('publishing-house/spec.yaml')
+spec = yaml.safe_load(spec_path.read_text()) or {}
+spec.setdefault('project', {})['jira_ticket'] = 'EPIC_KEY_HERE'
+with open(spec_path, 'w') as f:
+    yaml.dump(spec, f, default_flow_style=False, sort_keys=False)
+print('updated')
 "
 ```
-Replace PROJECT_ID with `project_id` and STAGE_FROM_STEP4 with the stage returned in Step 4.
-
+Replace EPIC_KEY_HERE with the actual `epic_key`. Commit silently:
 ```bash
-git add .ph-state
-git commit -m "chore: sync project state [skip ci]" 2>/dev/null || true
-git push 2>/dev/null || true
+git add publishing-house/spec.yaml
+git commit -m "feat: sync Jira ticket from workflow" 2>/dev/null || true
 ```
 
-(Skip silently if nothing changed.)
+If `project.deployment_mode` is `self_published`, skip the Jira ticket sync entirely — self-published projects don't use Jira.
 
-**Step 5 — Read spec.yaml for pre-populated fields:**
-
-Read `publishing-house/spec.yaml` using the Read tool. Note which fields already have values — the intake sub-skill will skip asking about those.
-
-**Step 6 — Orient by stage:**
+**Step 5 — Orient by stage:**
 
 - **intake** → dispatch the intake sub-skill (see below)
-- **content_review** → present content review status (see Stage responses)
-- **infra_review** → present infra review status (see Stage responses)
+- **review** → present reviews status (see Stage responses)
 - **development** → present development status (see Stage responses)
 - **ready** → present ready status (see Stage responses)
 - **published** → present published status (see Stage responses)
@@ -211,9 +197,8 @@ The intake sub-skill will:
 2. Conduct the requirements interview (one question at a time)
 3. Write `publishing-house/spec/design.md` from the interview answers
 4. Write `publishing-house/spec/modules/module-0N-*.md` outlines (one per module)
-5. Generate draft `publishing-house/spec/automation-manifest.yaml` from spec data
-6. Update spec.yaml with structured data from the interview
-7. Present the completed design to the author for review
+5. Update spec.yaml with structured data from the interview
+6. Present the completed design to the author for review
 
 **When the intake sub-skill signals it has finished writing the spec, the orchestrator MUST:**
 
@@ -233,7 +218,7 @@ Ask the author explicitly — do NOT proceed without this confirmation:
 **Step A — Commit and push:**
 ```bash
 git add publishing-house/
-git commit -m "feat: intake complete — design spec, module outlines, and automation manifest draft"
+git commit -m "feat: intake complete — design spec and module outlines"
 git push
 ```
 
@@ -246,137 +231,33 @@ python publishing-house/tools/ph-intake.py 2>&1
 
 `ph-intake.py` reads `project_id` from `catalog-info.yaml`, reads spec data from `spec.yaml`,
 calls `POST {central_url}/api/v1/projects/{project_id}/intake`, and updates `spec.yaml`
-with the returned Jira ticket and RCARS overlap data.
+with the returned Jira ticket.
 
 Parse the JSON output from ph-intake.py.
 
-**Step C — Commit and push the updated spec.yaml (with Jira ticket and RCARS data):**
+**Step C — Commit and push the updated spec.yaml (with Jira ticket):**
 ```bash
 git add publishing-house/spec.yaml
-git commit -m "feat: add Jira ticket and RCARS overlap from intake submission"
+git commit -m "feat: add Jira ticket from intake submission"
 git push
 ```
 
 **Run this immediately. Do NOT ask the author.**
 
-**Step C.5 — Query actual stage from RHDH after Jira creation + update .ph-state:**
-
-After the Jira ticket is created and SonataFlow has been signaled, query the actual stage
-that RHDH/SonataFlow transitioned to, then update `.ph-state` with the new stage.
-
-Run silently:
-```bash
-python3 -c "
-import json, os, yaml, ssl, urllib.request
-from pathlib import Path
-from datetime import datetime, timezone
-
-creds = json.load(open(os.path.expanduser('~/.config/publishing-house/auth.json')))
-key = creds.get('credential', '')
-ctx = ssl.create_default_context(); ctx.check_hostname = False; ctx.verify_mode = ssl.CERT_NONE
-req = urllib.request.Request(
-    'CENTRAL_URL/api/v1/projects/PROJECT_ID/orchestrator-state',
-    headers={'Authorization': f'Bearer {key}'}
-)
-try:
-    result = json.loads(urllib.request.urlopen(req, context=ctx, timeout=10).read().decode())
-    stage = result.get('stage', 'content_review')
-except Exception:
-    stage = 'content_review'
-
-# Update .ph-state with confirmed stage + jira ticket
-spec = yaml.safe_load(Path('publishing-house/spec.yaml').read_text()) or {}
-jira = spec.get('project', {}).get('jira_ticket', '')
-state = {'project_id': 'PROJECT_ID', 'stage': stage, 'updated_at': datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')}
-if jira:
-    state['jira_ticket'] = jira
-Path('.ph-state').write_text(json.dumps(state, indent=2))
-print(stage)
-"
-```
-Replace CENTRAL_URL with `central_url` and PROJECT_ID with `project_id`.
-
-Then commit the updated `.ph-state`:
-```bash
-git add .ph-state
-git commit -m "chore: sync project state to content_review [skip ci]"
-git push
-```
-
-Use the returned stage in Step D below.
-
 **Step D — Tell the author what happened:**
 > ✅ Spec submitted.
 > [For rhdp_published: "Jira ticket: **{epic_key}** — {jira_url}". For self_published: "No Jira — self-published mode."]
-> Stage is now **{confirmed_stage_from_rhdh}**. [Explain what happens next in one sentence based on the actual stage returned.]
-
-**Step E — Update worklog with intake summary:**
-
-Write a session summary to `publishing-house/worklog.yaml` capturing what was decided
-during intake. Run this immediately after Step D. Do NOT ask the author.
-
-```bash
-python3 -c "
-import yaml, json
-from pathlib import Path
-from datetime import datetime, timezone
-
-spec = yaml.safe_load(Path('publishing-house/spec.yaml').read_text()) or {}
-project = spec.get('project', {})
-s = spec.get('spec', {})
-modules = s.get('modules', [])
-duration = s.get('duration_hours', 0)
-title = s.get('title', project.get('slug', 'Unknown'))
-jira = project.get('jira_ticket', '')
-rcars = spec.get('approval_checklist', {}).get('content_lead', {})
-overlap = rcars.get('rcars_overlap_pct')
-
-content = (
-    f'Intake complete for \"{title}\". '
-    f'{len(modules)} modules, ~{duration}h total. '
-    + (f'Jira: {jira}. ' if jira else 'Self-published — no Jira. ')
-    + (f'RCARS overlap: {overlap}%. ' if overlap is not None else '')
-    + 'Stage: content_review. '
-    + 'Next: content reviewer reviews design spec and module outlines.'
-)
-
-wl_path = Path('publishing-house/worklog.yaml')
-wl = yaml.safe_load(wl_path.read_text()) if wl_path.exists() else {'entries': []}
-if not isinstance(wl, dict):
-    wl = {'entries': []}
-entries = wl.get('entries', [])
-today = datetime.now(timezone.utc).strftime('%Y-%m-%d')
-idx = sum(1 for e in entries if e.get('id','').startswith(today)) + 1
-entries.append({
-    'id': f'{today}-{idx:03d}',
-    'timestamp': datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'),
-    'author': project.get('owner_email', 'author'),
-    'status': 'resolved',
-    'type': 'summary',
-    'content': content,
-})
-wl['entries'] = entries
-wl_path.write_text(yaml.dump(wl, default_flow_style=False, allow_unicode=True))
-print('worklog updated')
-"
-```
-
-Then commit the worklog:
-```bash
-git add publishing-house/worklog.yaml
-git commit -m "docs: intake session summary"
-git push
-```
+> Stage is now **{stage}**. [Explain what happens next in one sentence.]
 
 ## Stage responses (non-intake)
 
-**content_review**
-> Spec submitted. Content reviewer is reviewing the design spec and module outlines.
-> [show failures if any, otherwise: "All compliance checks passed."]
-
-**infra_review**
-> Content review passed. Infrastructure reviewer is reviewing environment and automation requirements.
-> [show failures if any, otherwise: "All checks look good."]
+**review**
+> Spec submitted. Three parallel reviews are in progress:
+> - **Content Review** — design spec and module outlines
+> - **Infra Review** — environment and automation requirements
+> - **Development Review** — development readiness and tooling
+>
+> All three must complete before advancing to Development. Reviewers approve from the RHDH Publishing House portal.
 
 **development**
 > You're building. [show failures if any, otherwise: "All checks look good."]
@@ -395,9 +276,9 @@ git push
 - ALWAYS show the portal URL in the conversation — never rely solely on `open` working (DevSpaces has no browser)
 - **`project_id`** comes from `catalog-info.yaml` `metadata.name` — this is the canonical identifier
 - **`central_url`** comes from `spec.yaml` `system.central` — used for ALL API calls
-- Stage is ALWAYS confirmed from RHDH via orchestrator-state API — never hardcoded
-- **`.ph-state`** is a **committed file** at the repo root — updated and pushed after every stage change so anyone can see the project state on GitHub without running any tools
-- After intake approval: run git commit, ph-intake.py, `.ph-state` update, and worklog update IMMEDIATELY. No confirmation. No asking.
+- Stage is read from the Central API, never from local files
+- After intake approval: run git commit, ph-intake.py, and update IMMEDIATELY. No confirmation. No asking.
+- No `.ph-state` file — all state comes from catalog-info.yaml, spec.yaml, and the Central API
 
 ## Post-Intake: Project Structure Cleanup
 
