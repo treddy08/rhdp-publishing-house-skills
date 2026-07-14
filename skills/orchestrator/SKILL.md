@@ -139,7 +139,7 @@ except Exception as e:
 ```
 Replace CENTRAL_URL with `central_url` and PROJECT_ID with `project_id`.
 
-The output is the current stage: `intake`, `review`, `development`, `ready`, or `published`.
+The output is the current stage: `intake`, `content_review`, `infra_review`, `development`, `ready`, or `published`.
 
 **Step 5 — Read spec.yaml for pre-populated fields:**
 
@@ -148,7 +148,8 @@ Read `publishing-house/spec.yaml` using the Read tool. Note which fields already
 **Step 6 — Orient by stage:**
 
 - **intake** → dispatch the intake sub-skill (see below)
-- **review** → present review status (see Stage responses)
+- **content_review** → present content review status (see Stage responses)
+- **infra_review** → present infra review status (see Stage responses)
 - **development** → present development status (see Stage responses)
 - **ready** → present ready status (see Stage responses)
 - **published** → present published status (see Stage responses)
@@ -220,9 +221,13 @@ git push
 
 ## Stage responses (non-intake)
 
-**review**
-> Spec submitted. Reviewer is reviewing in RHDH orchestrator.
+**content_review**
+> Spec submitted. Content reviewer is reviewing the design spec and module outlines.
 > [show failures if any, otherwise: "All compliance checks passed."]
+
+**infra_review**
+> Content review passed. Infrastructure reviewer is reviewing environment and automation requirements.
+> [show failures if any, otherwise: "All checks look good."]
 
 **development**
 > You're building. [show failures if any, otherwise: "All checks look good."]

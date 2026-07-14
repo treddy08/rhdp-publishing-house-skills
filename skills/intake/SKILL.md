@@ -104,43 +104,16 @@ After reading the user's description:
 use that description — don't substitute your own idea. You are capturing their vision,
 not designing a better one.
 
-**Write to spec.yaml immediately.** After each answer (or group of answers from a single
-response), update `publishing-house/spec.yaml` with the captured fields right away. Do NOT
-wait until the end of the interview. This ensures no context is lost if the user sidesteps
-or the conversation is interrupted. When the user re-invokes the skill, pre-populated
-fields in spec.yaml will be skipped automatically.
+**Write to spec.yaml immediately.** After each answer, update `publishing-house/spec.yaml`
+with the captured fields right away. Do NOT wait until the end of the interview. This ensures
+no context is lost if the user sidesteps or the conversation is interrupted. When the user
+re-invokes the skill, pre-populated fields in spec.yaml will be skipped automatically.
 
-The required fields you need to capture (skip any already in spec.yaml):
-
-- **Project owner** — GitHub username. If `project.owner_email` is already set in spec.yaml, skip the email question.
-- **Reviewer** — (only for `rhdp_published` mode) email of the person who will review the spec. Skip if `project.reviewer_email` is already set or if `project.deployment_mode` is `self_published`.
-- **Main goal** — what someone can DO after completing this. Push for concrete, measurable outcomes.
-- **Target audience** — role, experience level, background knowledge
-- **Products/technologies** — full Red Hat product names, versions if known
-- **Type** — lab (hands-on) or demo (show-and-tell). Skip if `project.content_type` is set.
-- **Showroom type** — classic (standard Showroom) or zero_touch (embedded automation). Skip if `project.showroom_type` is set. If not set, ask: "Will this be a standard Showroom lab (Classic) or an embedded Zero-Touch experience?"
-- **Environment** — what the learner starts with and what automation must pre-configure
-- **Total duration** — validate against complexity
-- **Module structure** — propose based on complexity and topic. Each module 15-45 minutes.
-- **Module relationship** — how modules relate to each other:
-  - **Sequential** — modules build on each other and must be done in order
-  - **Independent with shared context** — can be done in any order but share a scenario
-  - **Fully independent** — standalone topics
-- **Difficulty level** — beginner, intermediate, or advanced
-- **Automation needed?** — based on environment complexity
-- **Infrastructure requirements** (guesstimates OK at intake):
-  - Base infrastructure — base CI type (ocp4-cluster, ocp-workloads, cloud-vms-base)
-  - Sizing — node types, counts, CPU/memory/disk
-  - Cloud provider — CNV (default) or exception
-  - Automation approach — Ansible, GitOps (Helm + ArgoCD), or combo
-  - Existing workloads to reuse from AgnosticD/GitOps/Collections
-  - New workloads needed and who builds them
-
-#### Reference Material
-
-After gathering core requirements, ask:
-
-> "Do you have any reference material I should work from? Internal docs, existing labs, recorded demos, architecture diagrams, or blog posts?"
+**Follow the canonical question list exactly.** Read the intake questions reference file at
+`@rhdp-publishing-house/skills/intake/references/intake-questions.md`. Ask each question
+using the **exact wording** in that file, **in that exact order**, **one at a time**. Do not
+rephrase, merge, reorder, or add questions. Skip any question whose spec.yaml field already
+has a value.
 
 If provided, read/parse and use to inform the design spec.
 
