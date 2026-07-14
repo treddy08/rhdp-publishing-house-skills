@@ -104,6 +104,12 @@ After reading the user's description:
 use that description — don't substitute your own idea. You are capturing their vision,
 not designing a better one.
 
+**Write to spec.yaml immediately.** After each answer (or group of answers from a single
+response), update `publishing-house/spec.yaml` with the captured fields right away. Do NOT
+wait until the end of the interview. This ensures no context is lost if the user sidesteps
+or the conversation is interrupted. When the user re-invokes the skill, pre-populated
+fields in spec.yaml will be skipped automatically.
+
 The required fields you need to capture (skip any already in spec.yaml):
 
 - **Project owner** — GitHub username. If `project.owner_email` is already set in spec.yaml, skip the email question.
