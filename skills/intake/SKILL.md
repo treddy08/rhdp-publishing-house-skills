@@ -107,6 +107,7 @@ not designing a better one.
 The required fields you need to capture (skip any already in spec.yaml):
 
 - **Project owner** — GitHub username. If `project.owner_email` is already set in spec.yaml, skip the email question.
+- **Reviewer** — (only for `rhdp_published` mode) email of the person who will review the spec. Skip if `project.reviewer_email` is already set or if `project.deployment_mode` is `self_published`.
 - **Main goal** — what someone can DO after completing this. Push for concrete, measurable outcomes.
 - **Target audience** — role, experience level, background knowledge
 - **Products/technologies** — full Red Hat product names, versions if known
@@ -213,6 +214,7 @@ Also update any project fields gathered during intake:
 - `project.owner_email` (if not already set)
 - `project.content_type` (if not already set)
 - `project.showroom_type` (if not already set)
+- `project.reviewer_email` (if gathered during intake — rhdp_published only)
 
 #### Step 4: Self-Validate the Spec
 

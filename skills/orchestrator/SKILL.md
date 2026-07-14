@@ -35,12 +35,9 @@ else:
 - `no-catalog` → this is not a Publishing House project. Show:
   > This doesn't look like a Publishing House project — `catalog-info.yaml` is missing.
   >
-  > Create one via the RHDH template, or start from the template repo:
-  > ```
-  > gh repo create my-lab --template rhpds/rhdp-publishing-house-template --public --clone
-  > cd my-lab
-  > ```
-  > Then run `/rhdp-publishing-house` again.
+  > Projects must be created through the **RHDH Developer Hub** template. Open RHDH, choose the **Publishing House Content Project** template, and fill in the form. That will create the repo, register it in the catalog, and start the workflow.
+  >
+  > Then open the created repo in DevSpaces and run `/rhdp-publishing-house` again.
 
   **STOP — do not proceed.**
 - `no-spec` → show: "`publishing-house/spec.yaml` is missing. This repo may not have been scaffolded correctly." **STOP.**
@@ -207,7 +204,16 @@ with the returned Jira ticket.
 
 Parse the JSON output from ph-intake.py.
 
-**Step C — Tell the author what happened:**
+**Step C — Commit and push the updated spec.yaml (with Jira ticket):**
+```bash
+git add publishing-house/spec.yaml
+git commit -m "feat: add Jira ticket from intake submission"
+git push
+```
+
+**Run this immediately. Do NOT ask the author.**
+
+**Step D — Tell the author what happened:**
 > ✅ Spec submitted.
 > [For rhdp_published: "Jira ticket: **{epic_key}** — {jira_url}". For self_published: "No Jira — self-published mode."]
 > Stage is now **{stage}**. [Explain what happens next in one sentence.]
