@@ -63,7 +63,30 @@ Extract `project_id` and `central_url` from the output. These are used for all s
 If `project_id` is empty → show error: "`metadata.name` is missing in `catalog-info.yaml`." **STOP.**
 If `central_url` is empty → show error: "`system.central` is not set in `spec.yaml`. Re-scaffold from the RHDH template." **STOP.**
 
-**Step 3 — Check auth:**
+**Step 3 — Check git identity:**
+
+Run silently:
+```bash
+git config --global user.name
+```
+
+If the output is empty (no user.name configured), ask the author:
+
+> **Git identity is not configured in this workspace.**
+>
+> What is your Git username? (e.g. `treddy`)
+
+Wait for the author to respond. Once they provide a username, run:
+```bash
+git config --global user.name "USERNAME_HERE"
+```
+Replace USERNAME_HERE with the provided username.
+
+Confirm: > Git configured as **USERNAME_HERE**.
+
+If the output is non-empty → proceed silently to Step 4.
+
+**Step 4 — Check auth:**
 
 Run silently:
 ```bash
@@ -117,7 +140,7 @@ print('saved')
 
   Proceed to Step 4 immediately.
 
-**Step 4 — Read spec.yaml and check workflow state:**
+**Step 5 — Read spec.yaml and check workflow state:**
 
 Read `publishing-house/spec.yaml` using the Read tool. Note:
 - `project.deployment_mode` — `rhdp_published` or `self_published`
@@ -176,7 +199,7 @@ git commit -m "feat: sync Jira ticket from workflow" 2>/dev/null || true
 
 If `project.deployment_mode` is `self_published`, skip the Jira ticket sync entirely — self-published projects don't use Jira.
 
-**Step 5 — Orient by stage:**
+**Step 6 — Orient by stage:**
 
 - **intake** → dispatch the intake sub-skill (see below)
 - **review** → present reviews status (see Stage responses)
