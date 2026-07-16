@@ -251,9 +251,19 @@ from pathlib import Path
 spec = yaml.safe_load(Path('publishing-house/spec.yaml').read_text()) or {}
 title = spec.get('spec', {}).get('title', spec.get('project', {}).get('slug', 'Publishing House Project'))
 
-# Build nav from spec/modules directory
-nav = [{'Home': 'design.md'}]
+# Generate index.md with links to design and modules
 modules = sorted(glob.glob('publishing-house/spec/modules/module-*.md'))
+index_lines = [f'# {title}', '', 'Welcome to the project spec. Use the navigation to browse the design and module outlines.', '', '- [Design Spec](design.md)']
+for m in modules:
+    fname = os.path.basename(m)
+    parts = fname.replace('.md', '').split('-', 2)
+    num = int(parts[1]) if len(parts) > 1 else 0
+    label = parts[2].replace('-', ' ').title() if len(parts) > 2 else fname
+    index_lines.append(f'- [Module {num} - {label}](modules/{fname})')
+Path('publishing-house/spec/index.md').write_text(chr(10).join(index_lines) + chr(10))
+
+# Build nav from spec/modules directory
+nav = [{'Home': 'index.md'}, {'Design Spec': 'design.md'}]
 if modules:
     mod_nav = []
     for m in modules:
