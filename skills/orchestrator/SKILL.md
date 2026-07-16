@@ -238,9 +238,73 @@ Ask the author explicitly — do NOT proceed without this confirmation:
 - **If feedback** → send the feedback back to the intake sub-skill and wait again
 - **If yes/looks good/proceed** → immediately execute the following steps WITHOUT asking again:
 
+**Step A0 — Generate mkdocs.yml and add TechDocs annotation:**
+
+Generate `mkdocs.yml` at the repo root so RHDH TechDocs can render the spec as documentation.
+Run silently:
+```bash
+python3 -c "
+import yaml, glob, os
+from pathlib import Path
+
+# Read spec for project title
+spec = yaml.safe_load(Path('publishing-house/spec.yaml').read_text()) or {}
+title = spec.get('spec', {}).get('title', spec.get('project', {}).get('slug', 'Publishing House Project'))
+
+# Build nav from spec/modules directory
+nav = [{'Home': 'design.md'}]
+modules = sorted(glob.glob('publishing-house/spec/modules/module-*.md'))
+if modules:
+    mod_nav = []
+    for m in modules:
+        fname = os.path.basename(m)
+        # Convert module-01-some-title.md -> 'Module 1 - Some Title'
+        parts = fname.replace('.md', '').split('-', 2)
+        num = int(parts[1]) if len(parts) > 1 else 0
+        label = parts[2].replace('-', ' ').title() if len(parts) > 2 else fname
+        mod_nav.append({f'Module {num} - {label}': f'modules/{fname}'})
+    nav.append({'Modules': mod_nav})
+
+# Check for other spec files
+if Path('publishing-house/spec/automation-manifest.yaml').exists():
+    nav.append({'Automation Manifest': 'automation-manifest.yaml'})
+if Path('publishing-house/spec/module-outline-template.md').exists():
+    nav.append({'Module Outline Template': 'module-outline-template.md'})
+
+mkdocs = {
+    'site_name': title,
+    'docs_dir': 'publishing-house/spec',
+    'nav': nav,
+    'plugins': ['techdocs-core'],
+}
+with open('mkdocs.yml', 'w') as f:
+    yaml.dump(mkdocs, f, default_flow_style=False, sort_keys=False)
+print('mkdocs.yml created')
+"
+```
+
+Then add the `backstage.io/techdocs-ref` annotation to `catalog-info.yaml`:
+```bash
+python3 -c "
+import yaml
+from pathlib import Path
+
+ci_path = Path('catalog-info.yaml')
+ci = yaml.safe_load(ci_path.read_text()) or {}
+annotations = ci.setdefault('metadata', {}).setdefault('annotations', {})
+if 'backstage.io/techdocs-ref' not in annotations:
+    annotations['backstage.io/techdocs-ref'] = 'dir:.'
+    with open(ci_path, 'w') as f:
+        yaml.dump(ci, f, default_flow_style=False, sort_keys=False)
+    print('techdocs annotation added')
+else:
+    print('techdocs annotation already present')
+"
+```
+
 **Step A — Commit and push:**
 ```bash
-git add publishing-house/
+git add publishing-house/ mkdocs.yml catalog-info.yaml
 git commit -m "feat: intake complete — design spec and module outlines"
 git push
 ```
